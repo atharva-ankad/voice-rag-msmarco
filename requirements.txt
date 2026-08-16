@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+datasets
+spacy
+qdrant-client
+rank_bm25
+cohere
+google-generativeai
+groq
+httpx
+python-dotenv
