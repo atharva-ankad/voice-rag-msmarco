@@ -1,5 +1,12 @@
 rag_sidecar.db
 parquet_metadata.bin
+# Generated artifacts
+*.pkl
+*.pickle
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
