@@ -48,13 +48,16 @@ class RAGGenerator:
                     ],
                     temperature=0.1,  # Keep low for strict RAG grounding
                     top_p=1,
-                    max_tokens=512,
+                    max_tokens=2048,
                     reasoning_effort=None  # <--- explicitly disable "Thinking Mode"
                 )
                 
                 # Fallback to prevent NoneType errors if the model hits another cutoff
-                content = response.choices[0].message.content
-                return content if content else "Error: Model returned an empty string."
+                content = response.choices[0].message.content.strip()
+                answer = content if content else "Error: Model returned an empty string."
+                
+                # RETURN BOTH the answer and the context string for the guardrail
+                return answer, context_window
                 
             except Exception as e:
                 logger.error(f"Generation failed: {str(e)}")

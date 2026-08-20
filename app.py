@@ -1,0 +1,108 @@
+import os
+import tempfile
+import logging
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from pydantic import BaseModel
+
+from interfaces.voice_handler import VoiceHandler
+from retrieval.hybrid_search import HybridRetriever
+from retrieval.cross_encoder import CrossEncoderReRanker
+from generation.generator import RAGGenerator
+from generation.guardrails import GuardrailManager
+
+# Configure logging for the harness
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Voice-Enabled RAG Pipeline")
+
+# Structured Output Model
+class RAGResponse(BaseModel):
+    query: str
+    response: str
+    safe: bool
+    error: str | None = None
+
+# Initialize modules once at startup to keep models loaded in memory
+voice_handler = VoiceHandler()
+retriever = HybridRetriever()
+reranker = CrossEncoderReRanker()
+generator = RAGGenerator()
+guardrails = GuardrailManager()
+
+@app.post("/chat/audio", response_model=RAGResponse)
+async def chat_audio(audio: UploadFile = File(...)):
+    """
+    Structured orchestration endpoint. 
+    Accepts an audio file, transcribes/translates it, and runs it through the secure RAG pipeline.
+    """
+    # 1. Temporarily save the audio file using its original extension
+    file_extension = ".wav" # Default fallback
+    if audio.filename and "." in audio.filename:
+        file_extension = f".{audio.filename.split('.')[-1]}"
+        
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_audio:
+        temp_audio.write(await audio.read())
+        temp_audio_path = temp_audio.name
+        
+    try:
+        # 2. Voice-to-Text (STT) with Retries
+        logger.info("Starting Speech-to-Text translation...")
+        query = voice_handler.transcribe_and_translate(temp_audio_path)
+        logger.info(f"Transcribed Query: {query}")
+        
+        # 3. Guardrail 1: Input Safety
+        if not guardrails.is_input_safe(query):
+            logger.warning("Input rejected by safety guardrails.")
+            return RAGResponse(
+                query=query, 
+                response="Input rejected by safety guardrails.", 
+                safe=False, 
+                error="unsafe_input"
+            )
+            
+        # 4. Retrieval & Re-ranking 
+        logger.info("Executing Hybrid Search and Cross-Encoder Reranking...")
+        candidates = retriever.hybrid_search(query)
+        top_candidates = reranker.rerank(query, candidates)
+        
+        # 5. Guardrail 2: Context Relevance
+        top_score = top_candidates[0].get("score", top_candidates[0].get("rerank_score", -1.0)) if top_candidates else -1.0
+        if not guardrails.is_context_relevant(top_score):
+            logger.warning("No relevant context found in vector DB.")
+            return RAGResponse(
+                query=query, 
+                response="I cannot answer this based on the provided context.", 
+                safe=True,
+                error="context_irrelevant"
+            )
+             
+        # 6. Generation
+        logger.info("Generating response...")
+        # Unpack the tuple directly into answer and context_used
+        answer, context_used = generator.generate_response(query, top_candidates)
+        
+        # 7. Guardrail 3: Hallucination Check
+        if not guardrails.is_output_grounded(context_used, answer):
+            logger.warning("Response failed grounding verification.")
+            return RAGResponse(
+                query=query, 
+                response="The generated response failed grounding verification.", 
+                safe=False,
+                error="hallucination_detected"
+            )
+            
+        return RAGResponse(
+            query=query,
+            response=answer,
+            safe=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Pipeline error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal processing error")
+        
+    finally:
+        # Ensure cleanup of the temporary audio file
+        if os.path.exists(temp_audio_path):
+            os.remove(temp_audio_path)
