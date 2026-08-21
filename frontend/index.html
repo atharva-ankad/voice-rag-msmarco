@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hacker House Goa - RAG</title>
+    <link rel="stylesheet" href="styles.css">
+    
+</head>
+<body>
+
+    <header>
+        <!-- Uses the main composite logo -->
+        <img src="image_6b917d.png" alt="Hacker House Goa">
+    </header>
+
+    <div class="container">
+        <!-- Box 1: Audio Input -->
+        <div class="card">
+            <div class="card-header">1. Voice / Audio Input</div>
+            <div class="audio-controls">
+                <button class="btn btn-record" id="micBtn">🎤 Record</button>
+                <span>— OR —</span>
+                <input type="file" id="audioUpload" accept="audio/*">
+                <button class="btn" id="submitAudioBtn">Submit Audio</button>
+            </div>
+            <audio id="audioPlayback" controls style="display: none; margin-top: 16px; width: 100%;"></audio>
+        </div>
+
+        <!-- Box 2: Text Input -->
+        <div class="card">
+            <div class="card-header">2. Text Query</div>
+            <textarea id="textQuery" placeholder="Type your query here..."></textarea>
+            <button class="btn" id="submitTextBtn">Submit Text</button>
+        </div>
+
+        <!-- Output Area -->
+        <div class="card output-card">
+            <div class="card-header">Pipeline Output</div>
+            
+            <p><strong>Transcribed Query:</strong></p>
+            <div class="transcription-box" id="transcriptionOut">Waiting for input...</div>
+            
+            <p><strong>Final Answer:</strong></p>
+            <div class="answer-box" id="answerOut">...</div>
+        </div>
+    </div>
+
+    <!-- Decorative footer -->
+    <footer></footer>
+    <script src="script.js"></script>
+</body>
+</html>

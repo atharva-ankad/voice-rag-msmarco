@@ -28,7 +28,11 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Structured Output Model
+# --- Models ---
+
+class TextQueryRequest(BaseModel):
+    query: str
+
 class RAGResponse(BaseModel):
     query: str
     response: str
@@ -42,26 +46,14 @@ reranker = CrossEncoderReRanker()
 generator = RAGGenerator()
 guardrails = GuardrailManager()
 
-@app.post("/chat/audio", response_model=RAGResponse)
-async def chat_audio(audio: UploadFile = File(...)):
+# --- Shared Core Logic ---
+
+async def execute_rag_pipeline(query: str) -> RAGResponse:
     """
-    Structured orchestration endpoint. 
-    Accepts an audio file, transcribes/translates it, and runs it through the secure RAG pipeline.
+    The central orchestration flow. Isolated so it can be invoked by both 
+    text and audio endpoints without duplicating the Guardrail -> RAG logic.
     """
-    file_extension = ".wav" 
-    if audio.filename and "." in audio.filename:
-        file_extension = f".{audio.filename.split('.')[-1]}"
-        
-    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_audio:
-        temp_audio.write(await audio.read())
-        temp_audio_path = temp_audio.name
-        
     try:
-        # Voice-to-Text
-        logger.info("Starting Speech-to-Text translation...")
-        query = voice_handler.transcribe_and_translate(temp_audio_path)
-        logger.info(f"Transcribed Query: {query}")
-        
         # Guardrail 1: Input Safety (Properly unpacked tuple)
         is_safe, safety_reason = guardrails.is_input_safe(query)
         if not is_safe:
@@ -112,22 +104,55 @@ async def chat_audio(audio: UploadFile = File(...)):
     except httpx.ReadTimeout:
         logger.error("Generation timed out.")
         return RAGResponse(
-            query=query if 'query' in locals() else "Unknown",
+            query=query,
             response="The system timed out processing your request. Please try again.",
             safe=False,
             error="api_timeout"
         )
     except Exception as e:
         logger.error(f"Pipeline error: {str(e)}")
-        # Structured error handling instead of raw 500 crashes
         return RAGResponse(
-            query=query if 'query' in locals() else "Unknown",
+            query=query,
             response="Internal processing error.",
             safe=False,
             error="internal_error"
         )
+
+# --- Endpoints ---
+
+@app.post("/chat/audio", response_model=RAGResponse)
+async def chat_audio(audio: UploadFile = File(...)):
+    """
+    Handles both microphone blobs and uploaded files. 
+    It saves the file temporarily, runs Speech-to-Text, and passes the text to the pipeline.
+    """
+    file_extension = ".wav" 
+    if audio.filename and "." in audio.filename:
+        file_extension = f".{audio.filename.split('.')[-1]}"
+        
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_audio:
+        temp_audio.write(await audio.read())
+        temp_audio_path = temp_audio.name
+        
+    try:
+        # Voice-to-Text
+        logger.info("Starting Speech-to-Text translation...")
+        query = voice_handler.transcribe_and_translate(temp_audio_path)
+        logger.info(f"Transcribed Query: {query}")
+        
+        # Handoff to shared pipeline
+        return await execute_rag_pipeline(query)
         
     finally:
         # Cleanup temp files
         if os.path.exists(temp_audio_path):
             os.remove(temp_audio_path)
+
+
+@app.post("/chat/text", response_model=RAGResponse)
+async def chat_text(payload: TextQueryRequest):
+    """
+    Directly accepts JSON text input, bypassing the STT translation layer entirely.
+    """
+    logger.info(f"Received direct text query: {payload.query}")
+    return await execute_rag_pipeline(payload.query)

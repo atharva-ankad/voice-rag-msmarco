@@ -1,0 +1,174 @@
+
+        /* Theme variables extracted from the provided images */
+        :root {
+            --goa-green: #0d5d34; /* Base green from backgrounds */
+            --goa-yellow: #fceb00; /* Yellow from Hacker House text */
+            --goa-pink: #ff007f;   /* Pink from Goa text and flowers */
+            --dark-text: #1a1a1a;
+            --light-bg: #f9f9f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace; /* Fits the hacker vibe */
+        }
+
+        body {
+            background-color: var(--goa-green);
+            /* Add the sunrise image to the background */
+            background-image: url('Sun rise.png'); 
+            background-size: cover;
+            background-position: center bottom;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            
+            color: var(--dark-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            /* Keep padding to ensure cards don't hit the bottom edge */
+            padding-bottom: 50px; 
+        }
+
+        /* Header containing the primary logo */
+        /* Header containing the primary logo */
+        header {
+            margin: 40px 0;
+            text-align: center;
+            background-color: #ffffff; /* Solid white background for the logo */
+            padding: 20px 40px;        /* Breathing room around the logo */
+            border: 4px solid var(--dark-text);
+            border-radius: 16px;
+            box-shadow: 8px 8px 0px var(--goa-pink); /* Pop-art shadow to match the theme */
+            z-index: 10;
+        }
+
+        header img {
+            max-width: 300px;
+            height: auto;
+            /* We can remove the drop-shadow here since the box has one now, 
+               but you can keep it if you want the text to look 3D inside the box */
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            z-index: 10;
+        }
+
+        /* UI Cards */
+        .card {
+            background: var(--light-bg);
+            border: 4px solid var(--dark-text);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 8px 8px 0px var(--goa-pink);
+            transition: transform 0.1s ease;
+        }
+
+        .card-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            border-bottom: 2px dashed var(--dark-text);
+            padding-bottom: 8px;
+        }
+
+        /* Box 1: Audio Controls */
+        .audio-controls {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .btn {
+            background-color: var(--goa-yellow);
+            color: var(--dark-text);
+            border: 3px solid var(--dark-text);
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            box-shadow: 4px 4px 0px var(--dark-text);
+            transition: all 0.1s;
+        }
+
+        .btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px var(--dark-text);
+        }
+
+        .btn-record {
+            background-color: var(--goa-pink);
+            color: white;
+        }
+
+        .btn-record.recording {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 127, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 0, 127, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 127, 0); }
+        }
+
+        input[type="file"] {
+            font-family: inherit;
+        }
+
+        /* Box 2: Text Controls */
+        textarea {
+            width: 100%;
+            height: 100px;
+            border: 3px solid var(--dark-text);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            resize: none;
+            margin-bottom: 12px;
+            background-color: #fff;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--goa-pink);
+        }
+
+        /* Output Area */
+        .output-card {
+            background: #fff;
+            box-shadow: 8px 8px 0px var(--goa-yellow);
+        }
+
+        .transcription-box, .answer-box {
+            background-color: #f0f0f0;
+            border: 2px solid #ccc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            min-height: 60px;
+        }
+
+        /* Footer styling using the palm tree artwork */
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background-image: url('footer trees.png');
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            z-index: 1;
+            pointer-events: none;
+        }
