@@ -1,10 +1,12 @@
 import os
 import tempfile
 import logging
+import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
+# Initialize app ONLY ONCE
 app = FastAPI(title="Voice-Enabled RAG Pipeline")
 
 from interfaces.voice_handler import VoiceHandler
@@ -26,8 +28,6 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Voice-Enabled RAG Pipeline")
-
 # Structured Output Model
 class RAGResponse(BaseModel):
     query: str
@@ -48,8 +48,7 @@ async def chat_audio(audio: UploadFile = File(...)):
     Structured orchestration endpoint. 
     Accepts an audio file, transcribes/translates it, and runs it through the secure RAG pipeline.
     """
-    # 1. Temporarily save the audio file using its original extension
-    file_extension = ".wav" # Default fallback
+    file_extension = ".wav" 
     if audio.filename and "." in audio.filename:
         file_extension = f".{audio.filename.split('.')[-1]}"
         
@@ -58,14 +57,15 @@ async def chat_audio(audio: UploadFile = File(...)):
         temp_audio_path = temp_audio.name
         
     try:
-        # 2. Voice-to-Text (STT) with Retries
+        # Voice-to-Text
         logger.info("Starting Speech-to-Text translation...")
         query = voice_handler.transcribe_and_translate(temp_audio_path)
         logger.info(f"Transcribed Query: {query}")
         
-        # 3. Guardrail 1: Input Safety
-        if not guardrails.is_input_safe(query):
-            logger.warning("Input rejected by safety guardrails.")
+        # Guardrail 1: Input Safety (Properly unpacked tuple)
+        is_safe, safety_reason = guardrails.is_input_safe(query)
+        if not is_safe:
+            logger.warning(f"Input rejected by safety guardrails: {safety_reason}")
             return RAGResponse(
                 query=query, 
                 response="Input rejected by safety guardrails.", 
@@ -73,12 +73,12 @@ async def chat_audio(audio: UploadFile = File(...)):
                 error="unsafe_input"
             )
             
-        # 4. Retrieval & Re-ranking 
+        # Retrieval & Re-ranking 
         logger.info("Executing Hybrid Search and Cross-Encoder Reranking...")
         candidates = retriever.hybrid_search(query)
         top_candidates = reranker.rerank(query, candidates)
         
-        # 5. Guardrail 2: Context Relevance
+        # Guardrail 2: Context Relevance
         top_score = top_candidates[0].get("score", top_candidates[0].get("rerank_score", -1.0)) if top_candidates else -1.0
         if not guardrails.is_context_relevant(top_score):
             logger.warning("No relevant context found in vector DB.")
@@ -89,12 +89,11 @@ async def chat_audio(audio: UploadFile = File(...)):
                 error="context_irrelevant"
             )
              
-        # 6. Generation
+        # Generation
         logger.info("Generating response...")
-        # Unpack the tuple directly into answer and context_used
         answer, context_used = generator.generate_response(query, top_candidates)
         
-        # 7. Guardrail 3: Hallucination Check
+        # Guardrail 3: Hallucination Check
         if not guardrails.is_output_grounded(context_used, answer):
             logger.warning("Response failed grounding verification.")
             return RAGResponse(
@@ -110,11 +109,25 @@ async def chat_audio(audio: UploadFile = File(...)):
             safe=True
         )
         
+    except httpx.ReadTimeout:
+        logger.error("Generation timed out.")
+        return RAGResponse(
+            query=query if 'query' in locals() else "Unknown",
+            response="The system timed out processing your request. Please try again.",
+            safe=False,
+            error="api_timeout"
+        )
     except Exception as e:
         logger.error(f"Pipeline error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal processing error")
+        # Structured error handling instead of raw 500 crashes
+        return RAGResponse(
+            query=query if 'query' in locals() else "Unknown",
+            response="Internal processing error.",
+            safe=False,
+            error="internal_error"
+        )
         
     finally:
-        # Ensure cleanup of the temporary audio file
+        # Cleanup temp files
         if os.path.exists(temp_audio_path):
             os.remove(temp_audio_path)
