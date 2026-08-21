@@ -3,12 +3,24 @@ import tempfile
 import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="Voice-Enabled RAG Pipeline")
 
 from interfaces.voice_handler import VoiceHandler
 from retrieval.hybrid_search import HybridRetriever
 from retrieval.cross_encoder import CrossEncoderReRanker
 from generation.generator import RAGGenerator
 from generation.guardrails import GuardrailManager
+
+# Allows Vercel frontend to talk to the Modal backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Configure logging for the harness
 logging.basicConfig(level=logging.INFO)

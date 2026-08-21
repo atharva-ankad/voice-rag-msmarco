@@ -1,5 +1,6 @@
 rag_sidecar.db
 parquet_metadata.bin
+test_queries
 # Generated artifacts
 *.pkl
 *.pickle

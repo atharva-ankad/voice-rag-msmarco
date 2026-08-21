@@ -35,7 +35,17 @@ class HybridRetriever:
         print(f"Connecting to SQLite sidecar at {db_path}...")
         if not os.path.exists(db_path):
             raise FileNotFoundError(f"SQLite database not found at {db_path}")
-        self.db_conn = sqlite3.connect(db_path, check_same_thread=False)
+            
+        # 1. Convert the file path to an absolute URI for read-only mode
+        db_uri = f"file:{os.path.abspath(db_path)}?mode=ro"
+        
+        # 2. Connect using the URI flag
+        self.db_conn = sqlite3.connect(db_uri, uri=True, check_same_thread=False)
+
+        # 3. Inject extreme read-only optimizations
+        self.db_conn.execute("PRAGMA mmap_size = 268435456;") # Map 256MB directly into RAM
+        self.db_conn.execute("PRAGMA journal_mode = OFF;")    # Disable disk write logs completely
+        self.db_conn.execute("PRAGMA query_only = ON;")       # Hard lock to prevent accidental writes
 
         print("Loading Qdrant Client...")
         self.qdrant = QdrantClient(
