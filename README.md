@@ -4,6 +4,8 @@
 
 ### Enterprise-grade, low-latency Retrieval-Augmented Generation with real-time speech I/O for **English (`en-IN`)** and **Hindi (`hi-IN`)**
 
+[Voice RAG — Live Demo](https://voice-rag-msmarco-eight.vercel.app/)
+
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-ASGI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Modal](https://img.shields.io/badge/Modal-Serverless%20GPU-7C3AED)](https://modal.com/)
