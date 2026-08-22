@@ -43,7 +43,7 @@ Rather than relying on a single-shot vector lookup, the system runs a **multi-st
 
 ## 🏗️ System Architecture
 
-### End-to-End Flow (Mermaid)
+### End-to-End Flow
 
 ![](https://github.com/atharva-ankad/voice-rag-msmarco/blob/main/docs/flowchart_rag_final.png)
 
@@ -159,7 +159,7 @@ load_data.py  →  init_db.py  →  populate_chunks.py  →  embed_and_upload.py
 | **B1 - Fixed Window Small** | 256 tokens | 50 tokens | Maximum retrieval precision for short, fact-dense queries |
 | **B2 - Fixed Window Large** | 512 tokens | 100 tokens | Broader context for multi-hop or explanatory questions |
 
-## 🛡️ 3-Tier Hybrid Defense System Deep-Dive
+## 🛡️ 3-Tier Hybrid Defense System
 
 Guardrails are positioned at three distinct points in the request lifecycle, each targeting a failure mode the others structurally cannot catch. The ordering is deliberate: the cheapest, highest-recall filter runs first so that adversarial traffic never reaches the GPU.
 
